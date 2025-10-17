@@ -4,7 +4,8 @@ import re
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLineEdit, QPushButton, QLabel,
     QVBoxLayout, QHBoxLayout, QMessageBox, QInputDialog, QTextEdit,
-    QGroupBox, QRadioButton, QButtonGroup, QComboBox, QSpinBox, QFormLayout
+    QGroupBox, QRadioButton, QButtonGroup, QComboBox, QSpinBox, QFormLayout,
+    QScrollArea
 )
 
 FILE = "users.txt"
@@ -67,16 +68,34 @@ def password_missing_components(passw):
 
 
 # ================= Криптография: справка и алгоритмы =================
-SYMMETRIC_ALGOS = [
+# Списки для реализованных алгоритмов (используются в окне шифрования/расшифрования)
+SYMMETRIC_ALGOS_IMPL = [
     "Цезарь",
     "Виженер",
     "XOR",
 ]
 
-ASYMMETRIC_ALGOS = [
+ASYMMETRIC_ALGOS_IMPL = [
     "RSA",
     "ElGamal",
     "Diffie–Hellman",
+]
+
+# Расширенные списки для раздела теории (5 алгоритмов в каждом)
+SYMMETRIC_ALGOS_THEORY = [
+    "Цезарь",
+    "Виженер",
+    "XOR",
+    "DES",
+    "AES",
+]
+
+ASYMMETRIC_ALGOS_THEORY = [
+    "RSA",
+    "ElGamal",
+    "Diffie–Hellman",
+    "DSA",
+    "ECC",
 ]
 
 THEORY_TEXT = {
@@ -102,6 +121,18 @@ THEORY_TEXT = {
             "• Стойкость: зависит от секретности и длины ключа; одноразовый блокнот (ключ=длина сообщения) — идеален\n"
             "Пример: Текст=HELLO, Ключ=KEY → Шифр=1d0a0f07... (hex)"
         ),
+        "DES": (
+            "DES (Data Encryption Standard) — блочный симметричный шифр с блоком 64 бита и ключом 56 бит.\n"
+            "• Режимы: ECB, CBC, CFB и др. На практике чаще используют 3DES или современные стандарты\n"
+            "• Стойкость: устаревший из-за малого ключа, уязвим к перебору\n"
+            "Пример: Блок 64-бит шифруется под одним ключом; в учебных целях демонстрируют работу S-блоков"
+        ),
+        "AES": (
+            "AES (Advanced Encryption Standard) — блочный шифр с блоком 128 бит и ключами 128/192/256 бит.\n"
+            "• Основан на преобразованиях SubBytes, ShiftRows, MixColumns и AddRoundKey\n"
+            "• Режимы: GCM, CBC, CTR и др.; широко применяется на практике\n"
+            "Пример: AES-128 в режиме GCM обеспечивает конфиденциальность и целостность (AEAD)"
+        ),
     },
     "asymmetric": {
         "RSA": (
@@ -123,6 +154,18 @@ THEORY_TEXT = {
             "• Публичные: A=g^a mod p, B=g^b mod p; общий секрет: K=B^a=A^b mod p\n"
             "• В этой программе K используется как ключ для XOR (шифр в hex)\n"
             "Пример: p=23, g=5, a=6, B=19 → K=2 → используется как ключ"
+        ),
+        "DSA": (
+            "DSA (Digital Signature Algorithm) — схема ЭП на параметрах p,q,g и ключах x (приватный), y=g^x mod p.\n"
+            "• Подпись: выбирают случайный k, r=(g^k mod p) mod q, s=k^{-1}(H(m)+x·r) mod q\n"
+            "• Проверка: вычисляют u1=H(m)·s^{-1} mod q, u2=r·s^{-1} mod q; проверяют ((g^{u1}·y^{u2} mod p) mod q)==r\n"
+            "Пример: Учебные параметры p,q,g и короткое сообщение дают подпись (r,s)"
+        ),
+        "ECC": (
+            "ECC (эллиптические кривые) — семейство алгоритмов на группах точек кривых.\n"
+            "• Позволяет меньшие ключи при той же стойкости (например, P-256)\n"
+            "• Используется в ECDH (обмен ключами) и ECDSA (подпись)\n"
+            "Пример: ECDH на кривой P-256 согласует общий секрет, применяемый далее как ключ"
         ),
     },
 }
@@ -552,7 +595,7 @@ class AlgorithmListWindow(QWidget):
         nav.addStretch(1)
         root.addLayout(nav)
 
-        algos = SYMMETRIC_ALGOS if category == "symmetric" else ASYMMETRIC_ALGOS
+        algos = SYMMETRIC_ALGOS_THEORY if category == "symmetric" else ASYMMETRIC_ALGOS_THEORY
         for name in algos:
             b = QPushButton(name)
             b.clicked.connect(lambda _=False, n=name: self.open_theory(n))
@@ -656,11 +699,15 @@ class EncryptDecryptWindow(QWidget):
         self.param_widgets = {} # name -> widget
 
     def _clear_form(self):
+        # Полностью очищаем область формы, удаляя как виджеты, так и вложенные лэйауты
         while self.form_area.count():
             item = self.form_area.takeAt(0)
             widget = item.widget()
+            child_layout = item.layout()
             if widget is not None:
                 widget.deleteLater()
+            elif child_layout is not None:
+                self._clear_layout(child_layout)
 
     def show_symmetric_form(self):
         self._clear_form()
@@ -670,7 +717,7 @@ class EncryptDecryptWindow(QWidget):
         algo_row = QHBoxLayout()
         algo_row.addWidget(QLabel("Симметричный алгоритм:"))
         self.algo_combo = QComboBox()
-        self.algo_combo.addItems(SYMMETRIC_ALGOS)
+        self.algo_combo.addItems(SYMMETRIC_ALGOS_IMPL)
         self.algo_combo.currentTextChanged.connect(self._rebuild_symmetric_params)
         algo_row.addWidget(self.algo_combo)
         self.form_area.addLayout(algo_row)
@@ -734,7 +781,7 @@ class EncryptDecryptWindow(QWidget):
         algo_row = QHBoxLayout()
         algo_row.addWidget(QLabel("Асимметричный алгоритм:"))
         self.algo_combo = QComboBox()
-        self.algo_combo.addItems(ASYMMETRIC_ALGOS)
+        self.algo_combo.addItems(ASYMMETRIC_ALGOS_IMPL)
         self.algo_combo.currentTextChanged.connect(self._rebuild_asymmetric_params)
         algo_row.addWidget(self.algo_combo)
         self.form_area.addLayout(algo_row)
@@ -811,11 +858,15 @@ class EncryptDecryptWindow(QWidget):
 
     # ---------- helpers ----------
     def _clear_layout(self, layout):
+        # Рекурсивно очищаем лэйаут от всех дочерних элементов (виджеты/вложенные лэйауты)
         while layout.count():
             item = layout.takeAt(0)
             widget = item.widget()
+            child_layout = item.layout()
             if widget is not None:
                 widget.deleteLater()
+            elif child_layout is not None:
+                self._clear_layout(child_layout)
 
     def _rebuild_symmetric_params(self, algo_name: str):
         if not self.param_form:
@@ -1000,6 +1051,11 @@ class QuizWindow(QWidget):
 
         self.groups = []  # type: list
 
+        # Прокручиваемая область для вопросов, чтобы окно не выходило за пределы экрана
+        container = QWidget()
+        container_layout = QVBoxLayout()
+        container.setLayout(container_layout)
+
         for idx, q in enumerate(self.questions):
             box = QGroupBox(f"Вопрос {idx + 1}")
             v = QVBoxLayout()
@@ -1010,8 +1066,15 @@ class QuizWindow(QWidget):
                 group.addButton(rb, opt_idx)
                 v.addWidget(rb)
             box.setLayout(v)
-            self.root.addWidget(box)
+            container_layout.addWidget(box)
             self.groups.append(group)
+
+        container_layout.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(container)
+        self.root.addWidget(scroll)
 
         btn_check = QPushButton("Проверить")
         btn_check.clicked.connect(self.check_answers)
@@ -1021,6 +1084,13 @@ class QuizWindow(QWidget):
         self.root.addWidget(self.result_label)
 
         self.setLayout(self.root)
+
+        # Ограничим максимальный размер окна относительно экрана и установим разумный стартовый размер
+        screen_geom = QApplication.primaryScreen().availableGeometry()
+        max_w = int(screen_geom.width() * 0.9)
+        max_h = int(screen_geom.height() * 0.9)
+        self.setMaximumSize(max_w, max_h)
+        self.resize(min(640, max_w), min(520, max_h))
 
     def check_answers(self):
         score = 0
