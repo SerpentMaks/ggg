@@ -869,7 +869,9 @@ class EncryptDecryptWindow(QWidget):
                 self._clear_layout(child_layout)
 
     def _rebuild_symmetric_params(self, algo_name: str):
-        if not self.param_form:
+        # NB: In PyQt, empty layouts evaluate to False because __len__ == 0.
+        # We must check explicitly for None to avoid skipping UI build on fresh layouts.
+        if self.param_form is None:
             return
         # clear
         self.param_widgets = {}
@@ -900,7 +902,8 @@ class EncryptDecryptWindow(QWidget):
             self.form_area.insertWidget(3, self.hint_label)  # after params
 
     def _rebuild_asymmetric_params(self, algo_name: str):
-        if not self.param_form:
+        # See comment in _rebuild_symmetric_params: avoid truthiness check on empty layout
+        if self.param_form is None:
             return
         # clear
         self.param_widgets = {}
