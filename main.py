@@ -4,7 +4,7 @@ import re
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLineEdit, QPushButton, QLabel,
     QVBoxLayout, QHBoxLayout, QMessageBox, QInputDialog, QTextEdit,
-    QGroupBox, QRadioButton, QButtonGroup
+    QGroupBox, QRadioButton, QButtonGroup, QComboBox, QSpinBox, QFormLayout
 )
 
 FILE = "users.txt"
@@ -70,92 +70,59 @@ def password_missing_components(passw):
 SYMMETRIC_ALGOS = [
     "Цезарь",
     "Виженер",
-    "Playfair",
-    "DES",
-    "AES",
+    "XOR",
 ]
 
 ASYMMETRIC_ALGOS = [
     "RSA",
     "ElGamal",
     "Diffie–Hellman",
-    "ECC",
-    "DSA",
 ]
 
 THEORY_TEXT = {
     "symmetric": {
         "Цезарь": (
-            "Шифр Цезаря — один из самых простых методов шифрования. "
-            "Каждая буква алфавита сдвигается на фиксированное число позиций по кругу. "
-            "Не зависит от ключевой фразы, а только от величины сдвига. "
-            "Пример: при сдвиге 3 A→D, B→E, C→F. "
-            "Пример шифрования: HELLO → KHOOR (сдвиг 3)."
+            "Шифр Цезаря — моноалфавитная замена: каждую букву сдвигают на N позиций по кругу.\n"
+            "• Ключ: целое число N (может быть отрицательным)\n"
+            "• Алфавиты: поддерживаются латиница и кириллица, регистр сохраняется\n"
+            "• Стойкость: низкая (защит от перебора 26/33 сдвигов нет)\n"
+            "Пример: сдвиг 3 → HELLO → KHOOR; ПРИВЕТ → ТУЛЕЗХ"
         ),
         "Виженер": (
-            "Шифр Виженера — полиалфавитный шифр, использующий ключевое слово. "
-            "Каждая буква текста сдвигается на значение буквы ключа. "
-            "Повышает стойкость по сравнению с Цезарем за счёт периодичности ключа. "
-            "Пример: Текст = ATTACK, Ключ = LEMON → Шифр = LXFOPV."
+            "Шифр Виженера — полиалфавитная замена: сдвиг каждой буквы зависит от буквы ключа.\n"
+            "• Ключ: слово/фраза (буквы), ключ повторяется по длине текста\n"
+            "• Алфавиты: латиница и кириллица, регистр сохраняется\n"
+            "• Стойкость: выше Цезаря, но уязвим при коротких ключах\n"
+            "Пример: Текст=ATTACKATDAWN, Ключ=LEMON → Шифр=LXFOPVEFRNHR"
         ),
-        "Playfair": (
-            "Playfair — биграммный шифр замены, работающий с парами букв. "
-            "Используется 5×5 таблица, заполняемая по ключу (обычно без буквы J). "
-            "Если пара содержит одинаковые буквы — вставляется X. "
-            "Пример: Ключ = MONARCHY → Таблица начинается с MONARCHY... "
-            "ATTACK → AT TA CK → шифруется как → LR GS XB."
-        ),
-        "DES": (
-            "DES (Data Encryption Standard) — блочный симметричный шифр, "
-            "работающий с блоками по 64 бита и ключом 56 бит. "
-            "Использует 16 раундов перестановок и замен (Feistel network). "
-            "Сейчас устарел из-за малой длины ключа. "
-            "Пример: Текст = 0123456789ABCDEF, Ключ = 133457799BBCDFF1 → "
-            "Шифр = 85E813540F0AB405."
-        ),
-        "AES": (
-            "AES (Advanced Encryption Standard) — современный блочный стандарт шифрования. "
-            "Размер блока 128 бит, длина ключа 128/192/256 бит. "
-            "Использует многократные раунды подстановок, перестановок и смешиваний (S-box, ShiftRows, MixColumns). "
-            "Пример: Текст = 'HELLO1234567890', Ключ = 'KEY1234567890ABC' → "
-            "Шифр (AES-128) = 'B7A1E23F9C8DAB00...'."
+        "XOR": (
+            "Потоковое шифрование XOR: каждый байт текста складывается по модулю 2 с байтом ключа.\n"
+            "• Ключ: произвольная строка (повторяется по длине сообщения)\n"
+            "• Результат: для удобства выводится в hex; для расшифровки подайте тот же ключ и hex\n"
+            "• Стойкость: зависит от секретности и длины ключа; одноразовый блокнот (ключ=длина сообщения) — идеален\n"
+            "Пример: Текст=HELLO, Ключ=KEY → Шифр=1d0a0f07... (hex)"
         ),
     },
     "asymmetric": {
         "RSA": (
-            "RSA — асимметричный алгоритм, основанный на сложности факторизации больших чисел. "
-            "Использует два ключа: публичный (e, n) и приватный (d, n). "
-            "Шифрование: C = M^e mod n, Расшифровка: M = C^d mod n. "
-            "Пример: p=61, q=53, n=3233, e=17, d=2753, "
-            "M=65 → C = 65^17 mod 3233 = 2790 → M = 2790^2753 mod 3233 = 65."
+            "RSA — шифрование на больших модулях n=p·q. Пара ключей: публичный (e,n), приватный (d,n).\n"
+            "• Шифрование: C = M^e mod n; Расшифровка: M = C^d mod n\n"
+            "• На практике M — это блок байтов после выравнивания/паддинга (OAEP), здесь — учебная версия посимвольно\n"
+            "Пример (учебный): p=61, q=53, n=3233, e=17, d=2753; 'A'(65) → 2790 → 65"
         ),
         "ElGamal": (
-            "ElGamal — асимметричный алгоритм, основанный на сложности дискретного логарифма. "
-            "Для шифрования используется случайное число, что делает каждый результат уникальным. "
-            "Пример: p=23, g=5, приватный ключ x=6 → публичный y=g^x mod p=8. "
-            "Шифрование M=10: выбираем k=15 → C1=19, C2=(M*y^k) mod p=2 → шифр = (19,2)."
+            "ElGamal над Z_p*: публичные параметры (p — простое, g — порождающий), ключи: приватный x, публичный y=g^x mod p.\n"
+            "• Шифрование символа m: выбираем случайный k; c1=g^k mod p, c2=m·y^k mod p\n"
+            "• Расшифровка: m=c2·(c1^(p-1-x)) mod p\n"
+            "• Важно: ord(символ) < p\n"
+            "Пример: p=23, g=5, x=6 → y=8; m=10 → (c1,c2)=(19,2)"
         ),
         "Diffie–Hellman": (
-            "Протокол Диффи–Хеллмана — не шифр, а способ безопасного обмена "
-            "ключом по открытому каналу. "
-            "Обе стороны вычисляют общий секрет K = g^(ab) mod p, "
-            "не передавая его напрямую. "
-            "Пример: p=23, g=5, A выбирает a=6 → 5^6 mod 23=8; "
-            "B выбирает b=15 → 5^15 mod 23=19; "
-            "общий ключ = 19^6 mod 23 = 8^15 mod 23 = 2."
-        ),
-        "ECC": (
-            "ECC (Elliptic Curve Cryptography) — криптография на эллиптических кривых. "
-            "Основана на сложности задачи дискретного логарифма на кривых. "
-            "Обеспечивает ту же безопасность, что RSA, при гораздо меньших ключах. "
-            "Пример: точка P на кривой, секрет k=7 → публичный ключ Q = kP. "
-            "Шифрование и подпись аналогичны ElGamal, но в пространстве точек."
-        ),
-        "DSA": (
-            "DSA (Digital Signature Algorithm) — стандарт цифровой подписи "
-            "на основе дискретных логарифмов. Используется только для подписи и проверки. "
-            "Пример: Хэш сообщения h=9, случайное k=14, p=23, q=11, g=4 → "
-            "r=(g^k mod p) mod q=8, s=(k⁻¹(h+x*r)) mod q=10 → подпись = (8,10)."
+            "Диффи–Хеллман — согласование общего секрета K без передачи его напрямую.\n"
+            "• Параметры: p — простое, g — основание; стороны выбирают приватные a и b\n"
+            "• Публичные: A=g^a mod p, B=g^b mod p; общий секрет: K=B^a=A^b mod p\n"
+            "• В этой программе K используется как ключ для XOR (шифр в hex)\n"
+            "Пример: p=23, g=5, a=6, B=19 → K=2 → используется как ключ"
         ),
     },
 }
@@ -210,6 +177,161 @@ def rsa_decrypt(cipher_numbers: str) -> str:
     except Exception:
         return "Ошибка: ожидается набор целых чисел, разделённых пробелами"
     return "".join(decoded_chars)
+
+# ================= Дополнительные алгоритмы (параметризуемые) =================
+import secrets
+import hashlib
+
+
+def vigenere_cipher(text: str, key: str, decrypt: bool = False) -> str:
+    if not key:
+        return text
+    result_chars = []
+    key_len = len(key)
+    key_index = 0
+
+    def get_shift_from_key_char(kch: str, alphabet: str) -> int:
+        # try same case
+        pos = alphabet.find(kch)
+        if pos != -1:
+            return pos
+        # try lower-cased
+        pos = alphabet.find(kch.lower())
+        if pos != -1:
+            return pos
+        # try upper-cased
+        pos = alphabet.find(kch.upper())
+        if pos != -1:
+            return pos
+        return 0
+
+    for ch in text:
+        if ch in LATIN_LOWER:
+            kch = key[key_index % key_len]
+            shift = get_shift_from_key_char(kch, LATIN_LOWER)
+            result_chars.append(_shift_alphabet(ch, LATIN_LOWER, -shift if decrypt else shift))
+            key_index += 1
+        elif ch in LATIN_UPPER:
+            kch = key[key_index % key_len]
+            shift = get_shift_from_key_char(kch, LATIN_UPPER)
+            result_chars.append(_shift_alphabet(ch, LATIN_UPPER, -shift if decrypt else shift))
+            key_index += 1
+        elif ch in CYR_LOWER:
+            kch = key[key_index % key_len]
+            shift = get_shift_from_key_char(kch, CYR_LOWER)
+            result_chars.append(_shift_alphabet(ch, CYR_LOWER, -shift if decrypt else shift))
+            key_index += 1
+        elif ch in CYR_UPPER:
+            kch = key[key_index % key_len]
+            shift = get_shift_from_key_char(kch, CYR_UPPER)
+            result_chars.append(_shift_alphabet(ch, CYR_UPPER, -shift if decrypt else shift))
+            key_index += 1
+        else:
+            result_chars.append(ch)
+    return "".join(result_chars)
+
+
+def xor_encrypt_to_hex(text: str, key: str) -> str:
+    if not key:
+        return text
+    tb = text.encode("utf-8")
+    kb = key.encode("utf-8")
+    out = bytearray()
+    for i, b in enumerate(tb):
+        out.append(b ^ kb[i % len(kb)])
+    return out.hex()
+
+
+def xor_decrypt_from_hex(hex_text: str, key: str) -> str:
+    if not key:
+        return hex_text
+    try:
+        cb = bytes.fromhex(hex_text.strip())
+    except ValueError:
+        return "Ошибка: ожидается hex-строка (0-9a-f)"
+    kb = key.encode("utf-8")
+    out = bytearray()
+    for i, b in enumerate(cb):
+        out.append(b ^ kb[i % len(kb)])
+    try:
+        return out.decode("utf-8")
+    except UnicodeDecodeError:
+        return out.decode("utf-8", errors="replace")
+
+
+def rsa_encrypt_with_key(plaintext: str, e: int, n: int) -> str:
+    return " ".join(str(pow(ord(ch), e, n)) for ch in plaintext)
+
+
+def rsa_decrypt_with_key(cipher_numbers: str, d: int, n: int) -> str:
+    parts = [p for p in cipher_numbers.strip().split() if p]
+    try:
+        decoded_chars = [chr(pow(int(p), d, n)) for p in parts]
+    except Exception:
+        return "Ошибка: ожидается набор целых чисел, разделённых пробелами"
+    return "".join(decoded_chars)
+
+
+def elgamal_encrypt_text(plaintext: str, p: int, g: int, y: int) -> str:
+    if p <= 2:
+        return "Ошибка: p должно быть простым > 2"
+    pairs = []
+    for ch in plaintext:
+        m = ord(ch)
+        if m >= p:
+            return "Ошибка: ord(символа) >= p. Выберите большее p."
+        k = secrets.randbelow(p - 2) + 1  # 1..p-2
+        c1 = pow(g, k, p)
+        s = pow(y, k, p)
+        c2 = (m * s) % p
+        pairs.append(f"{c1},{c2}")
+    return " ".join(pairs)
+
+
+def elgamal_decrypt_text(cipher_pairs: str, p: int, x: int) -> str:
+    parts = [p for p in cipher_pairs.replace(";", " ").split() if p]
+    out_chars = []
+    try:
+        for pair in parts:
+            c1_str, c2_str = pair.split(",")
+            c1, c2 = int(c1_str), int(c2_str)
+            s_inv = pow(c1, p - 1 - x, p)
+            m = (c2 * s_inv) % p
+            out_chars.append(chr(m))
+    except Exception:
+        return "Ошибка: ожидаются пары вида c1,c2, разделённые пробелами"
+    return "".join(out_chars)
+
+
+def _dh_shared_key_bytes(p: int, g: int, a: int, B: int) -> bytes:
+    K = pow(B, a, p)
+    # Деривируем байты ключа из числа K через SHA-256
+    digest = hashlib.sha256(str(K).encode("utf-8")).digest()
+    return digest
+
+
+def dh_xor_encrypt_text(plaintext: str, p: int, g: int, a: int, B: int) -> str:
+    key_bytes = _dh_shared_key_bytes(p, g, a, B)
+    tb = plaintext.encode("utf-8")
+    out = bytearray()
+    for i, b in enumerate(tb):
+        out.append(b ^ key_bytes[i % len(key_bytes)])
+    return out.hex()
+
+
+def dh_xor_decrypt_text(hex_cipher: str, p: int, g: int, a: int, B: int) -> str:
+    try:
+        cb = bytes.fromhex(hex_cipher.strip())
+    except ValueError:
+        return "Ошибка: ожидается hex-строка (0-9a-f)"
+    key_bytes = _dh_shared_key_bytes(p, g, a, B)
+    out = bytearray()
+    for i, b in enumerate(cb):
+        out.append(b ^ key_bytes[i % len(key_bytes)])
+    try:
+        return out.decode("utf-8")
+    except UnicodeDecodeError:
+        return out.decode("utf-8", errors="replace")
 
 
 # ================= Окно входа =================
@@ -464,7 +586,22 @@ class TheoryWindow(QWidget):
         nav.addStretch(1)
         root.addLayout(nav)
 
-        text = THEORY_TEXT.get("symmetric" if category == "symmetric" else "asymmetric", {}).get(algo_name, "")
+        # Добавим мини-примеры использования для закрепления
+        base_text = THEORY_TEXT.get("symmetric" if category == "symmetric" else "asymmetric", {}).get(algo_name, "")
+        extras = []
+        if algo_name == "Цезарь":
+            extras.append("Пример ввода: текст='Привет', сдвиг=5 → 'Фхнёзч'")
+        if algo_name == "Виженер":
+            extras.append("Пример: текст='АТАКА', ключ='ЛИМОН' → шифр")
+        if algo_name == "XOR":
+            extras.append("Пример: текст='HELLO', ключ='KEY' → hex-шифр")
+        if algo_name == "RSA":
+            extras.append("В этой программе можно ввести e и n (для шифрования) или d и n (для расшифровки)")
+        if algo_name == "ElGamal":
+            extras.append("Вводите p,g,y для шифрования и p,x для расшифровки; пары вида c1,c2")
+        if algo_name == "Diffie–Hellman":
+            extras.append("Будет выведен/ожидается hex, ключ выводится из общего секрета")
+        text = base_text + ("\n\n" + "\n".join(extras) if extras else "")
         view = QTextEdit()
         view.setReadOnly(True)
         view.setPlainText(text)
@@ -483,7 +620,7 @@ class EncryptDecryptWindow(QWidget):
         self.parent_window = parent_window
         self.mode = mode  # 'encrypt' | 'decrypt'
         self.setWindowTitle("Шифрование" if mode == "encrypt" else "Расшифровка")
-        self.setGeometry(460, 260, 560, 360)
+        self.setGeometry(460, 260, 640, 520)
 
         self.root = QVBoxLayout()
 
@@ -513,6 +650,10 @@ class EncryptDecryptWindow(QWidget):
         self.input_line = None  # type: QLineEdit
         self.result_view = None  # type: QTextEdit
         self.hint_label = None  # type: QLabel
+        self.algo_combo = None  # type: QComboBox
+        self.param_box = None   # type: QGroupBox
+        self.param_form = None  # type: QFormLayout
+        self.param_widgets = {} # name -> widget
 
     def _clear_form(self):
         while self.form_area.count():
@@ -525,67 +666,259 @@ class EncryptDecryptWindow(QWidget):
         self._clear_form()
         mode_title = "Зашифровать" if self.mode == "encrypt" else "Расшифровать"
 
-        self.form_area.addWidget(QLabel("Симметричный алгоритм: Цезарь (сдвиг 3)"))
-        self.form_area.addWidget(QLabel("Введите текст:"))
+        # Выбор алгоритма
+        algo_row = QHBoxLayout()
+        algo_row.addWidget(QLabel("Симметричный алгоритм:"))
+        self.algo_combo = QComboBox()
+        self.algo_combo.addItems(SYMMETRIC_ALGOS)
+        self.algo_combo.currentTextChanged.connect(self._rebuild_symmetric_params)
+        algo_row.addWidget(self.algo_combo)
+        self.form_area.addLayout(algo_row)
+
+        # Параметры
+        self.param_box = QGroupBox("Параметры")
+        self.param_form = QFormLayout()
+        self.param_box.setLayout(self.param_form)
+        self.form_area.addWidget(self.param_box)
+        self.param_widgets = {}
+        self._rebuild_symmetric_params(self.algo_combo.currentText())
+
+        # Ввод данных
+        self.form_area.addWidget(QLabel("Введите текст:" if self.mode == "encrypt" else "Введите данные:"))
         self.input_line = QLineEdit()
         self.form_area.addWidget(self.input_line)
 
+        # Кнопка запуска
         run_btn = QPushButton(mode_title)
         run_btn.clicked.connect(self._run_symmetric)
         self.form_area.addWidget(run_btn)
 
+        # Результат
         self.result_view = QTextEdit()
         self.result_view.setReadOnly(True)
         self.form_area.addWidget(QLabel("Результат:"))
         self.form_area.addWidget(self.result_view)
 
     def _run_symmetric(self):
-        if not self.input_line or not self.result_view:
+        if not self.input_line or not self.result_view or not self.algo_combo:
             return
+        algo = self.algo_combo.currentText()
         text = self.input_line.text()
-        if self.mode == "encrypt":
-            out = caesar_cipher(text, 3)
-        else:
-            out = caesar_cipher(text, -3)
+        try:
+            if algo == "Цезарь":
+                shift_widget = self.param_widgets.get("shift")
+                shift = int(shift_widget.value()) if shift_widget else 3
+                out = caesar_cipher(text, shift if self.mode == "encrypt" else -shift)
+            elif algo == "Виженер":
+                key_widget = self.param_widgets.get("key")
+                key = key_widget.text() if key_widget else ""
+                out = vigenere_cipher(text, key, decrypt=(self.mode == "decrypt"))
+            elif algo == "XOR":
+                key_widget = self.param_widgets.get("key")
+                key = key_widget.text() if key_widget else ""
+                if self.mode == "encrypt":
+                    out = xor_encrypt_to_hex(text, key)
+                else:
+                    out = xor_decrypt_from_hex(text.strip(), key)
+            else:
+                out = "Неизвестный алгоритм"
+        except Exception as exc:
+            out = f"Ошибка: {exc}"
         self.result_view.setPlainText(out)
 
     def show_asymmetric_form(self):
         self._clear_form()
         mode_title = "Зашифровать" if self.mode == "encrypt" else "Расшифровать"
 
-        self.form_area.addWidget(QLabel("Асимметричный алгоритм: RSA (учебный)"))
-        if self.mode == "decrypt":
-            self.hint_label = QLabel("Для RSA введите числа через пробел")
-            self.form_area.addWidget(self.hint_label)
-        self.form_area.addWidget(QLabel("Введите данные:"))
+        # Выбор алгоритма
+        algo_row = QHBoxLayout()
+        algo_row.addWidget(QLabel("Асимметричный алгоритм:"))
+        self.algo_combo = QComboBox()
+        self.algo_combo.addItems(ASYMMETRIC_ALGOS)
+        self.algo_combo.currentTextChanged.connect(self._rebuild_asymmetric_params)
+        algo_row.addWidget(self.algo_combo)
+        self.form_area.addLayout(algo_row)
 
+        # Параметры
+        self.param_box = QGroupBox("Параметры")
+        self.param_form = QFormLayout()
+        self.param_box.setLayout(self.param_form)
+        self.form_area.addWidget(self.param_box)
+        self.param_widgets = {}
+        self._rebuild_asymmetric_params(self.algo_combo.currentText())
+
+        # Ввод данных
+        self.form_area.addWidget(QLabel("Введите данные:"))
         self.input_line = QLineEdit()
-        if self.mode == "decrypt":
+        if self.mode == "decrypt" and self.algo_combo.currentText() == "RSA":
             self.input_line.setPlaceholderText("Например: 2790 1313 1961 …")
         self.form_area.addWidget(self.input_line)
 
+        # Кнопка запуска
         run_btn = QPushButton(mode_title)
         run_btn.clicked.connect(self._run_asymmetric)
         self.form_area.addWidget(run_btn)
 
+        # Результат
         self.result_view = QTextEdit()
         self.result_view.setReadOnly(True)
         self.form_area.addWidget(QLabel("Результат:"))
         self.form_area.addWidget(self.result_view)
 
     def _run_asymmetric(self):
-        if not self.input_line or not self.result_view:
+        if not self.input_line or not self.result_view or not self.algo_combo:
             return
         data = self.input_line.text()
-        if self.mode == "encrypt":
-            out = rsa_encrypt(data)
-        else:
-            out = rsa_decrypt(data)
+        algo = self.algo_combo.currentText()
+        try:
+            if algo == "RSA":
+                if self.mode == "encrypt":
+                    e = int(self.param_widgets.get("e").value())
+                    n = int(self.param_widgets.get("n").text())
+                    out = rsa_encrypt_with_key(data, e, n)
+                else:
+                    d = int(self.param_widgets.get("d").value())
+                    n = int(self.param_widgets.get("n").text())
+                    out = rsa_decrypt_with_key(data, d, n)
+            elif algo == "ElGamal":
+                if self.mode == "encrypt":
+                    p = int(self.param_widgets.get("p").text())
+                    g = int(self.param_widgets.get("g").text())
+                    y = int(self.param_widgets.get("y").text())
+                    out = elgamal_encrypt_text(data, p, g, y)
+                else:
+                    p = int(self.param_widgets.get("p").text())
+                    x = int(self.param_widgets.get("x").text())
+                    out = elgamal_decrypt_text(data, p, x)
+            elif algo == "Diffie–Hellman":
+                p = int(self.param_widgets.get("p").text())
+                g = int(self.param_widgets.get("g").text())
+                a = int(self.param_widgets.get("a").text())
+                B = int(self.param_widgets.get("B").text())
+                if self.mode == "encrypt":
+                    out = dh_xor_encrypt_text(data, p, g, a, B)
+                else:
+                    out = dh_xor_decrypt_text(data, p, g, a, B)
+            else:
+                out = "Неизвестный алгоритм"
+        except Exception as exc:
+            out = f"Ошибка: {exc}"
         self.result_view.setPlainText(out)
 
     def go_back(self):
         self.close()
         self.parent_window.show()
+
+    # ---------- helpers ----------
+    def _clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _rebuild_symmetric_params(self, algo_name: str):
+        if not self.param_form:
+            return
+        # clear
+        self.param_widgets = {}
+        self._clear_layout(self.param_form)
+
+        if algo_name == "Цезарь":
+            shift = QSpinBox()
+            shift.setRange(-10000, 10000)
+            shift.setValue(3)
+            self.param_widgets["shift"] = shift
+            self.param_form.addRow("Сдвиг:", shift)
+        elif algo_name == "Виженер":
+            key = QLineEdit()
+            key.setPlaceholderText("Ключевое слово, например LEMON")
+            self.param_widgets["key"] = key
+            self.param_form.addRow("Ключ:", key)
+        elif algo_name == "XOR":
+            key = QLineEdit()
+            key.setPlaceholderText("Строка-ключ, повторяется по длине сообщения")
+            self.param_widgets["key"] = key
+            self.param_form.addRow("Ключ:", key)
+        # hints
+        if self.hint_label:
+            self.hint_label.deleteLater()
+            self.hint_label = None
+        if algo_name == "XOR" and self.mode == "decrypt":
+            self.hint_label = QLabel("Введите hex-строку шифра")
+            self.form_area.insertWidget(3, self.hint_label)  # after params
+
+    def _rebuild_asymmetric_params(self, algo_name: str):
+        if not self.param_form:
+            return
+        # clear
+        self.param_widgets = {}
+        self._clear_layout(self.param_form)
+
+        if algo_name == "RSA":
+            if self.mode == "encrypt":
+                e = QSpinBox(); e.setRange(3, 1_000_000_000); e.setValue(17)
+                n = QLineEdit(); n.setText(str(RSA_N))
+                self.param_widgets["e"] = e
+                self.param_widgets["n"] = n
+                self.param_form.addRow("e:", e)
+                self.param_form.addRow("n:", n)
+            else:
+                d = QSpinBox(); d.setRange(3, 10_000_000_000); d.setValue(RSA_D)
+                n = QLineEdit(); n.setText(str(RSA_N))
+                self.param_widgets["d"] = d
+                self.param_widgets["n"] = n
+                self.param_form.addRow("d:", d)
+                self.param_form.addRow("n:", n)
+            # hints
+            if self.hint_label:
+                self.hint_label.deleteLater()
+                self.hint_label = None
+            if self.mode == "decrypt":
+                self.hint_label = QLabel("Введите числа шифртекста через пробел (например: 2790 1313 …)")
+                self.form_area.insertWidget(3, self.hint_label)
+        elif algo_name == "ElGamal":
+            p = QLineEdit(); p.setText("23")
+            if self.mode == "encrypt":
+                g = QLineEdit(); g.setText("5")
+                y = QLineEdit(); y.setText("8")
+                self.param_widgets["p"] = p
+                self.param_widgets["g"] = g
+                self.param_widgets["y"] = y
+                self.param_form.addRow("p:", p)
+                self.param_form.addRow("g:", g)
+                self.param_form.addRow("y (публичный):", y)
+            else:
+                x = QLineEdit(); x.setText("6")
+                self.param_widgets["p"] = p
+                self.param_widgets["x"] = x
+                self.param_form.addRow("p:", p)
+                self.param_form.addRow("x (приватный):", x)
+            if self.hint_label:
+                self.hint_label.deleteLater()
+                self.hint_label = None
+            if self.mode == "decrypt":
+                self.hint_label = QLabel("Введите пары c1,c2 через пробел (пример: 19,2 7,15 …)")
+                self.form_area.insertWidget(3, self.hint_label)
+        elif algo_name == "Diffie–Hellman":
+            p = QLineEdit(); p.setText("23")
+            g = QLineEdit(); g.setText("5")
+            a = QLineEdit(); a.setText("6")
+            B = QLineEdit(); B.setText("19")
+            self.param_widgets["p"] = p
+            self.param_widgets["g"] = g
+            self.param_widgets["a"] = a
+            self.param_widgets["B"] = B
+            self.param_form.addRow("p:", p)
+            self.param_form.addRow("g:", g)
+            self.param_form.addRow("a (ваш приватный):", a)
+            self.param_form.addRow("B (чужой публичный):", B)
+            if self.hint_label:
+                self.hint_label.deleteLater()
+                self.hint_label = None
+            hint_text = "Вводите обычный текст. Результат/ввод шифра — hex."
+            self.hint_label = QLabel(hint_text)
+            self.form_area.insertWidget(3, self.hint_label)
 
 
 class QuizWindow(QWidget):
@@ -634,6 +967,26 @@ class QuizWindow(QWidget):
                 ],
                 "answer": 1,
             },
+            {
+                "q": "В шифре Цезаря сдвиг - это…",
+                "options": ["Размер блока", "Количество позиций, на которое смещается буква", "Генератор простых чисел"],
+                "answer": 1,
+            },
+            {
+                "q": "В Виженере сдвиг определяется…",
+                "options": ["Буквой ключа", "Номером строки", "Никак"],
+                "answer": 0,
+            },
+            {
+                "q": "Что верно про XOR-шифрование?",
+                "options": ["Шифр и расшифровка одинаковые операции", "Нужен открытый модуль n", "Использует кривые"],
+                "answer": 0,
+            },
+            {
+                "q": "DH (Диффи–Хеллман) используется для…",
+                "options": ["Подписи", "Согласования общего секрета", "Сжатия"],
+                "answer": 1,
+            },
         ]
 
         self.root = QVBoxLayout()
@@ -671,12 +1024,16 @@ class QuizWindow(QWidget):
 
     def check_answers(self):
         score = 0
-        for group, q in zip(self.groups, self.questions):
+        wrong = []
+        for idx, (group, q) in enumerate(zip(self.groups, self.questions), start=1):
             checked_id = group.checkedId()
             if checked_id == q["answer"]:
                 score += 1
+            else:
+                wrong.append(idx)
         total = len(self.questions)
-        self.result_label.setText(f"Результат: {score} из {total}")
+        detail = "" if not wrong else f". Ошибки в вопросах: {', '.join(map(str, wrong))}"
+        self.result_label.setText(f"Результат: {score} из {total}{detail}")
 
     def go_back(self):
         self.close()
