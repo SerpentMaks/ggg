@@ -19,22 +19,26 @@ function loadData() {
     const savedTests = localStorage.getItem('cryptoTests');
     const savedGrades = localStorage.getItem('cryptoGrades');
 
-    console.log('savedTests:', savedTests);
-    
-    users = savedUsers ? JSON.parse(savedUsers) : {
-        'ADMIN': {
-            username: 'ADMIN',
-            password: 'admin123',
-            blocked: false,
-            restrictions: false,
-            variant: 0
-        },
-        'maks': {
-            username: 'maks',
-            password: '123',
-            blocked: false,
-            restrictions: false,
-            variant: 0
+     if (savedUsers) {
+        users = JSON.parse(savedUsers);
+        console.log('Пользователи загружены из localStorage:', users);
+    } else {
+        // Только если localStorage пуст — создаём дефолтных
+        users = {
+            'ADMIN': {
+                username: 'ADMIN',
+                password: 'admin123',
+                blocked: false,
+                restrictions: false,
+                variant: 0
+            },
+            'maks': {
+                username: 'maks',
+                password: '123',
+                blocked: false,
+                restrictions: false,
+                variant: 0
+            }
         }
     };
     function saveData() {
