@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система изучения криптографии</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Экран входа -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="login-card">
+                <h1>Система изучения криптографии</h1>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Имя пользователя:</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Пароль:</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Войти</button>
+                </form>
+                <div id="loginError" class="error-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Админ панель -->
+    <div id="adminPanel" class="screen">
+        <div class="container">
+            <header class="header">
+                <h1>👨‍💼 Админ панель</h1>
+                <button id="logoutBtn" class="btn btn-secondary">Выйти</button>
+            </header>
+            
+            <div class="admin-content">
+                <div class="admin-section">
+                    <h2>Управление пользователями</h2>
+                    <div class="admin-actions">
+                        <button id="addUserBtn" class="btn btn-primary">Добавить пользователя</button>
+                        <button id="viewUsersBtn" class="btn btn-info">Просмотр пользователей</button>
+                        <button id="blockUserBtn" class="btn btn-warning">Блокировать/Разблокировать</button>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h2>Управление теорией</h2>
+                    <div class="admin-actions">
+                        <button id="addTheoryBtn" class="btn btn-primary">Добавить теорию</button>
+                        <button id="editTheoryBtn" class="btn btn-warning">Редактировать теорию</button>
+                        <button id="deleteTheoryBtn" class="btn btn-danger">Удалить теорию</button>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h2>Управление тестами</h2>
+                    <div class="admin-actions">
+                        <button id="addTestBtn" class="btn btn-primary">Добавить тест</button>
+                        <button id="editTestBtn" class="btn btn-warning">Редактировать тест</button>
+                        <button id="deleteTestBtn" class="btn btn-danger">Удалить тест</button>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h2>Статистика оценок</h2>
+                    <div class="admin-actions">
+                        <button id="viewGradesBtn" class="btn btn-info">Просмотр оценок</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пользовательский интерфейс -->
+    <div id="userPanel" class="screen">
+        <div class="container">
+            <header class="header">
+                <h1>Добро пожаловать, <span id="userName"></span></h1>
+                <button id="userLogoutBtn" class="btn btn-secondary">Выйти</button>
+            </header>
+            
+            <div class="user-content">
+                <div class="user-section">
+                    <h2>Шифрование и дешифровка</h2>
+                    <div class="crypto-actions">
+                        <button id="encryptBtn" class="btn btn-primary">Шифрование</button>
+                        <button id="decryptBtn" class="btn btn-success">Дешифровка</button>
+                    </div>
+                </div>
+
+                <div class="user-section">
+                    <h2>Теория</h2>
+                    <div class="theory-actions">
+                        <button id="symmetricTheoryBtn" class="btn btn-info">Симметричные алгоритмы</button>
+                        <button id="asymmetricTheoryBtn" class="btn btn-info">Асимметричные алгоритмы</button>
+                    </div>
+                </div>
+
+                <div class="user-section">
+                    <h2>Тестирование</h2>
+                    <div class="test-actions">
+                        <button id="symmetricTestBtn" class="btn btn-primary">Тест: Симметричные алгоритмы</button>
+                        <button id="asymmetricTestBtn" class="btn btn-primary">Тест: Асимметричные алгоритмы</button>
+                        <button id="viewUserGradesBtn" class="btn btn-info">Мои оценки</button>
+                    </div>
+                </div>
+
+                <div class="user-section">
+                    <h2>Настройки</h2>
+                    <div class="settings-actions">
+                        <button id="changePasswordBtn" class="btn btn-warning">Сменить пароль</button>
+                        <button id="showPasswordRulesBtn" class="btn btn-info">Требования к паролю</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Окно шифрования/расшифровки -->
+    <div id="cryptoModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2 id="cryptoTitle">Шифрование</h2>
+            <div class="crypto-form">
+                <div class="form-group">
+                    <label>Тип алгоритма:</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="cryptoType" value="symmetric" checked> Симметричный</label>
+                        <label><input type="radio" name="cryptoType" value="asymmetric"> Асимметричный</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cryptoAlgorithm">Алгоритм:</label>
+                    <select id="cryptoAlgorithm">
+                        <option value="caesar">Цезарь</option>
+                        <option value="vigenere">Виженер</option>
+                        <option value="xor">XOR</option>
+                    </select>
+                </div>
+
+                <div id="cryptoParams"></div>
+
+                <div class="form-group">
+                    <label for="cryptoInput">Введите текст:</label>
+                    <textarea id="cryptoInput" rows="4"></textarea>
+                </div>
+
+                <button id="cryptoExecute" class="btn btn-primary">Выполнить</button>
+                
+                <div class="form-group">
+                    <label>Результат:</label>
+                    <textarea id="cryptoOutput" rows="4" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Окно теории -->
+    <div id="theoryModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2 id="theoryTitle">Теория</h2>
+            <div id="theoryContent"></div>
+        </div>
+    </div>
+
+    <!-- Окно тестирования -->
+    <div id="testModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Тест по криптографии</h2>
+            <div id="testContent"></div>
+            <button id="submitTest" class="btn btn-primary">Завершить тест</button>
+        </div>
+    </div>
+
+    <!-- Окно оценок -->
+    <div id="gradesModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Оценки</h2>
+            <div id="gradesContent"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
