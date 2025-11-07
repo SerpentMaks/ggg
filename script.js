@@ -28,6 +28,13 @@ function loadData() {
             blocked: false,
             restrictions: false,
             variant: 0
+        },
+        'maks': {
+            username: 'maks',
+            password: '123',
+            blocked: false,
+            restrictions: false,
+            variant: 0
         }
     };
     function saveData() {
