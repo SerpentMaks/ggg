@@ -30,6 +30,12 @@ function loadData() {
             variant: 0
         }
     };
+    function saveData() {
+    localStorage.setItem('cryptoUsers', JSON.stringify(users));
+    localStorage.setItem('cryptoTheory', JSON.stringify(theory));
+    localStorage.setItem('cryptoTests', JSON.stringify(tests));
+    localStorage.setItem('cryptoGrades', JSON.stringify(grades));
+}
 
     theory = savedTheory ? JSON.parse(savedTheory) : {
         symmetric: {
@@ -1909,6 +1915,7 @@ function showAddUserModal() {
         };
         
         saveData();
+        
         alert('Пользователь добавлен');
         closeModal();
     });
